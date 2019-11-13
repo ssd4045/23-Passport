@@ -30,23 +30,43 @@ app.use(bodyParser.urlencoded({ extended: false }));
 
 app.use(session({ secret: "cats" }));
 
-//Passport
+//Passport: implementacion de estrategia local (ver toon.io/understanding-passportjs-auhtnetication-flow/)
 passport.use(
-  new LocalStrategy(function(inputEmail, password, done) {
-    User.findOne({ email: inputEmail }, function(err, user) {
-      if (err) {
-        return done(err);
-      }
-      if (!user) {
-        return done(null, false, { message: "Incorrect email." });
-      }
-      if (!user.validPassword(password)) {
-        return done(null, false, { message: "Incorrect password." });
-      }
-      return done(null, user);
-    });
-  })
+ new LocalStrategy(
+   { usernameField: "email", passwordField: "password" }
+   //por default passport espera userName y password. Por eso seteo el username como email
+   ,
+   function(email, password, done) {
+     User.findOne({ where: { email: email } })
+       .then(user => {
+         if (!user) {
+           return done(null, false, { message: "Incorrect username." });
+           console.log('aaaaaaaaaaaaaaaaaaaaaaaaaa')
+         }
+         if (!user.validPassword(password)) {
+           return done(null, false, { message: "Incorrect password." });
+           console.log('bbbbbbbbbbbbbbbbbbbbbbbbbb')
+         }
+         return done(null, user);
+       })
+       .catch(err => console.log(err));
+   }
+ )
 );
+
+//chequear https://stackoverflow.com/questions/27637609/understanding-passport-serialize-deserialize
+passport.serializeUser(function(user, done) {
+  done(null, user.id); 
+});
+
+passport.deserializeUser(function(id, done) {
+  User.findByPk(id).then(user => {
+    done(null, user)
+  })
+});
+
+
+
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
@@ -64,6 +84,6 @@ app.use(function(err, req, res, next) {
   res.render("error");
 });
 
-db.sync();
+
 
 module.exports = app;
